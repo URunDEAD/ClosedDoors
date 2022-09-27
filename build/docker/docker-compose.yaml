@@ -1,0 +1,14 @@
+version: '3.1'
+
+services:
+
+  db:
+    image: mariadb
+    restart: always
+    ports:
+      - 3306:3306
+    environment:
+      MARIADB_USER: example_user
+      MARIADB_ROOT_PASSWORD: example_root_pass
+      MARIADB_PASSWORD: pass
+      MARIADB_DATABASE: doors
