@@ -10,6 +10,12 @@ services:
       - db
     links:
       - "db:database"
+    environment:
+      MYSQL_HOST: database
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWD: example_root_pass
+      MYSQL_DBNAME: doors
 
   db:
     image: mariadb
