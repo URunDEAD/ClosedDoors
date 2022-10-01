@@ -1,4 +1,5 @@
-module github.com/URunDEAD/ClosedDoors.git
+module github.com/URunDEAD/ClosedDoors
+
 
 go 1.19
 
