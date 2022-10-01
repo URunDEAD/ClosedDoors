@@ -10,6 +10,8 @@ services:
       - db
     links:
       - "db:database"
+    ports:
+      - 8080:8080
     environment:
       MYSQL_HOST: database
       MYSQL_PORT: 3306

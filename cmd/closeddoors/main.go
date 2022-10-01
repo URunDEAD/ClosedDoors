@@ -1,11 +1,11 @@
 package main
 
 import (
-	"crypto/sha256"
 	"database/sql"
+	"encoding/json"
 	"flag"
-	"fmt"
 	"log"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -17,6 +17,11 @@ var (
 	database *sql.DB
 	router   *mux.Router
 )
+
+type JsonResponse struct {
+	Type    string `json:"type"`
+	Message string `json:"message"`
+}
 
 func init() {
 	log.Println("Starting ClosedDoors service...")
@@ -30,20 +35,25 @@ func init() {
 	flag.Parse()
 
 	initDatabse(*host, *user, *passwd, *dbName, *port)
+	initRouter()
 
 }
 
 func main() {
 
-	// router := mux.NewRouter()
-	// print(router)
+	log.Fatal(http.ListenAndServe(":8080", router))
+	database.Close()
 }
 
 func initRouter() {
 
+	log.Println("Starting API...")
+
 	router = mux.NewRouter()
 
-	// router.HandleFunc("/check/")
+	router.HandleFunc("/check", CheckKey).Methods("POST")
+
+	router.HandleFunc("/register", RegisterKey).Methods("POST")
 }
 
 func initDatabse(host, user, passwd, dbName string, port int) *sql.DB {
@@ -73,7 +83,6 @@ func initDatabse(host, user, passwd, dbName string, port int) *sql.DB {
 		continue
 
 	}
-	defer database.Close()
 
 	qry := "CREATE TABLE IF NOT EXISTS doors (" +
 		"key_sha CHAR(64) PRIMARY KEY," +
@@ -89,7 +98,9 @@ func initDatabse(host, user, passwd, dbName string, port int) *sql.DB {
 	return database
 }
 
-func registerKey(key_sha string, database *sql.DB) {
+func RegisterKey(w http.ResponseWriter, r *http.Request) {
+	log.Println("test2")
+	key_sha := r.FormValue("hash")
 	qry := "INSERT INTO doors (key_sha, expire_time) VALUES('" + key_sha + "', CURRENT_TIMESTAMP)"
 
 	_, err := database.Exec(qry)
@@ -98,12 +109,17 @@ func registerKey(key_sha string, database *sql.DB) {
 		panic(err.Error())
 	}
 
+	response := JsonResponse{Type: "success", Message: "Invalid"}
+	json.NewEncoder(w).Encode(response)
+
 	log.Println("Added key hash: " + key_sha + " ")
 }
 
-func checkKey(key string, database *sql.DB) bool {
-	key_sha := sha256.Sum256([]byte(key))
-	qry := "SELECT key_sha FROM doors WHERE key_sha='" + fmt.Sprintf("%x", key_sha) + "'"
+func CheckKey(w http.ResponseWriter, r *http.Request) {
+
+	log.Println("test1")
+	key_sha := r.FormValue("hash")
+	qry := "SELECT key_sha FROM doors WHERE key_sha='" + key_sha + "'"
 
 	rows, err := database.Query(qry)
 
@@ -113,12 +129,17 @@ func checkKey(key string, database *sql.DB) bool {
 
 	defer rows.Close()
 
+	var response = JsonResponse{}
+
 	if rows.Next() {
-		log.Println("key: " + key + " status: VALID")
-		return true
+		log.Println("key: " + key_sha + " status: VALID")
+		response = JsonResponse{Type: "success", Message: "Valid"}
+		json.NewEncoder(w).Encode(response)
+		return
 	}
 
-	log.Println("key: " + key + " status: INVALID ")
-	return false
+	log.Println("key: " + key_sha + " status: INVALID ")
+	response = JsonResponse{Type: "success", Message: "Invalid"}
+	json.NewEncoder(w).Encode(response)
 
 }
