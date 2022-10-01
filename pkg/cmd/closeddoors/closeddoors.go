@@ -24,7 +24,9 @@ type JsonResponse struct {
 
 func StartServer(mysqlHost, mysqlUser, mysqlPasswd, mysqlDbName string, mysqlPort int) {
 	log.Println("Starting ClosedDoors service...")
-	initDatabse(mysqlHost, mysqlUser, mysqlPasswd, mysqlDbName, mysqlPort)
+	log.Println("Connecting to SQL database...")
+	InitDatabase(mysqlHost, mysqlUser, mysqlPasswd, mysqlDbName, mysqlPort)
+	log.Println("Connected!")
 	initRouter()
 
 	log.Fatal(http.ListenAndServe(":8080", router))
@@ -41,9 +43,7 @@ func initRouter() {
 	router.HandleFunc("/register", RegisterKeyHandler).Methods("POST")
 }
 
-func initDatabse(host, user, passwd, dbName string, port int) *sql.DB {
-
-	log.Println("Connecting to SQL database...")
+func InitDatabase(host, user, passwd, dbName string, port int) {
 
 	var (
 		err error
@@ -60,7 +60,6 @@ func initDatabse(host, user, passwd, dbName string, port int) *sql.DB {
 
 		err = database.Ping()
 		if err == nil {
-			log.Println("Connected!")
 			break
 		}
 
@@ -80,7 +79,6 @@ func initDatabse(host, user, passwd, dbName string, port int) *sql.DB {
 		panic(err.Error())
 	}
 
-	return database
 }
 
 func RegisterKeyHandler(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +112,7 @@ func CheckKeyHandler(w http.ResponseWriter, r *http.Request) {
 	if !CheckKey(key_sha) {
 		response.Message = "Invalid"
 	}
-
+	log.Println("key: " + key_sha + " status: " + response.Message)
 	json.NewEncoder(w).Encode(response)
 
 }
@@ -132,12 +130,8 @@ func CheckKey(key_sha string) bool {
 	defer rows.Close()
 
 	if rows.Next() {
-		log.Println("key: " + key_sha + " status: VALID")
-
 		return true
 	}
-
-	log.Println("key: " + key_sha + " status: INVALID ")
 
 	return false
 
