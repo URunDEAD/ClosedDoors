@@ -51,9 +51,9 @@ func initRouter() {
 
 	router = mux.NewRouter()
 
-	router.HandleFunc("/check", CheckKey).Methods("POST")
+	router.HandleFunc("/check", CheckKeyHandler).Methods("POST")
 
-	router.HandleFunc("/register", RegisterKey).Methods("POST")
+	router.HandleFunc("/register", RegisterKeyHandler).Methods("POST")
 }
 
 func initDatabse(host, user, passwd, dbName string, port int) *sql.DB {
@@ -98,9 +98,19 @@ func initDatabse(host, user, passwd, dbName string, port int) *sql.DB {
 	return database
 }
 
-func RegisterKey(w http.ResponseWriter, r *http.Request) {
-	log.Println("test2")
+func RegisterKeyHandler(w http.ResponseWriter, r *http.Request) {
+
 	key_sha := r.FormValue("hash")
+
+	RegisterKey(key_sha)
+
+	response := JsonResponse{Type: "success", Message: "Registered"}
+	json.NewEncoder(w).Encode(response)
+
+	log.Println("Added key hash: " + key_sha + " ")
+}
+
+func RegisterKey(key_sha string) {
 	qry := "INSERT INTO doors (key_sha, expire_time) VALUES('" + key_sha + "', CURRENT_TIMESTAMP)"
 
 	_, err := database.Exec(qry)
@@ -108,17 +118,24 @@ func RegisterKey(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err.Error())
 	}
-
-	response := JsonResponse{Type: "success", Message: "Invalid"}
-	json.NewEncoder(w).Encode(response)
-
-	log.Println("Added key hash: " + key_sha + " ")
 }
 
-func CheckKey(w http.ResponseWriter, r *http.Request) {
+func CheckKeyHandler(w http.ResponseWriter, r *http.Request) {
 
-	log.Println("test1")
 	key_sha := r.FormValue("hash")
+
+	response := JsonResponse{Type: "success", Message: "Valid"}
+
+	if !CheckKey(key_sha) {
+		response.Message = "Invalid"
+	}
+
+	json.NewEncoder(w).Encode(response)
+
+}
+
+func CheckKey(key_sha string) bool {
+
 	qry := "SELECT key_sha FROM doors WHERE key_sha='" + key_sha + "'"
 
 	rows, err := database.Query(qry)
@@ -129,17 +146,14 @@ func CheckKey(w http.ResponseWriter, r *http.Request) {
 
 	defer rows.Close()
 
-	var response = JsonResponse{}
-
 	if rows.Next() {
 		log.Println("key: " + key_sha + " status: VALID")
-		response = JsonResponse{Type: "success", Message: "Valid"}
-		json.NewEncoder(w).Encode(response)
-		return
+
+		return true
 	}
 
 	log.Println("key: " + key_sha + " status: INVALID ")
-	response = JsonResponse{Type: "success", Message: "Invalid"}
-	json.NewEncoder(w).Encode(response)
+
+	return false
 
 }
