@@ -11,15 +11,15 @@ RUN go mod download && go mod verify
 
 #Copy files
 COPY . .
-RUN go build -v -o /usr/local/bin/closeddoors ./...
+RUN go build -v -o /usr/local/bin/ ./...
 
 #Start Execution
 CMD [ \
     "sh", "-c", \
     "closeddoors \
-    -host $MYSQL_HOST \
-    -port $MYSQL_PORT \
-    -user $MYSQL_USER \
-    -passwd $MYSQL_PASSWD \
-    -db-name $MYSQL_DBNAME " \
+    -MYSQL-Host $MYSQL_HOST \
+    -MYSQL-Port $MYSQL_PORT \
+    -MYSQL-User $MYSQL_USER \
+    -MYSQL-Passwd $MYSQL_PASSWD \
+    -MYSQL-DB-name $MYSQL_DBNAME " \
     ]
