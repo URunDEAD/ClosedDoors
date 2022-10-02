@@ -1,0 +1,35 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  test:
+    env:
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_DBNAME: doors
+      MYSQL_PASSWD: pass
+      
+    runs-on: ubuntu-latest
+
+    steps:
+      
+    - name: Start test db
+      run: docker run --rm -d -e MARIADB_DATABASE=$MYSQL_DBNAME -e MARIADB_ROOT_PASSWORD=$MYSQL_PASSWD -p $MYSQL_PORT:3306  mariadb:latest
+    
+    - name: Checkout Code
+      uses: actions/checkout@v3
+      
+    - name: Setup Go enviroment
+      uses: actions/setup-go@v3.3.0
+      with:
+        go-version-file: go.mod
+
+    - name: Run Tests
+      run: cd test && go test -v
