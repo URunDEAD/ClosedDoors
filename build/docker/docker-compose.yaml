@@ -16,7 +16,7 @@ services:
       MYSQL_HOST: database
       MYSQL_PORT: 3306
       MYSQL_USER: root
-      MYSQL_PASSWD: example_root_pass
+      MYSQL_PASSWD: pass
       MYSQL_DBNAME: doors
 
   test_service:
@@ -33,7 +33,7 @@ services:
       MYSQL_HOST: database
       MYSQL_PORT: 3306
       MYSQL_USER: root
-      MYSQL_PASSWD: example_root_pass
+      MYSQL_PASSWD: pass
       MYSQL_DBNAME: doors
 
   db:
@@ -44,7 +44,5 @@ services:
     ports:
       - 3306:3306
     environment:
-      MARIADB_USER: example_user
-      MARIADB_ROOT_PASSWORD: example_root_pass
-      MARIADB_PASSWORD: pass
+      MARIADB_ROOT_PASSWORD: pass
       MARIADB_DATABASE: doors
