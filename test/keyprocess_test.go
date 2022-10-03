@@ -6,21 +6,23 @@ import (
 	"testing"
 	"time"
 
-	"github.com/URunDEAD/ClosedDoors/pkg/cmd/closeddoors"
+	"github.com/URunDEAD/ClosedDoors/pkg/cmd/database"
 )
 
 var (
-	host, user, passwd, dbName string
-	port                       int
+	db *database.Database
 )
 
 func init() {
-	host = os.Getenv("MYSQL_HOST")
-	user = os.Getenv("MYSQL_USER")
-	port, _ = strconv.Atoi(os.Getenv("MYSQL_PORT"))
-	passwd = os.Getenv("MYSQL_PASSWD")
-	dbName = os.Getenv("MYSQL_DBNAME")
-	closeddoors.InitDatabase(host, user, passwd, dbName, port)
+	port, _ := strconv.Atoi(os.Getenv("MYSQL_PORT"))
+	db = database.NewSQLConnection().
+		SetHost(os.Getenv("MYSQL_HOST")).
+		SetUser(os.Getenv("MYSQL_USER")).
+		SetPasswd(os.Getenv("MYSQL_PASSWD")).
+		SetPort(port).
+		SetDBName(os.Getenv("MYSQL_DBNAME"))
+	db.StartConnection()
+	db.InitDatabase()
 }
 
 func TestCheckRegisteredKey(t *testing.T) {
@@ -38,16 +40,15 @@ func TestCheckRegisteredKey(t *testing.T) {
 	}
 
 	expire_time := time.Now().Add(time.Hour * 1).Format("2006-01-02 15:04:05")
-	print(expire_time)
 
 	//populate test db
 	for _, test := range addTests {
-		closeddoors.RegisterKey(test.inputSha, expire_time)
+		db.RegisterKey(test.inputSha, expire_time)
 	}
 
 	//start testing
 	for _, test := range addTests {
-		if closeddoors.CheckKey(test.inputSha) != test.expected {
+		if db.CheckKey(test.inputSha) != test.expected {
 			t.Errorf("Key %s does no show as found but should have been", test.inputSha)
 		}
 	}

@@ -1,21 +1,29 @@
 package closeddoors
 
 import (
-	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
-	"strconv"
-	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/URunDEAD/ClosedDoors/pkg/cmd/database"
 	"github.com/gorilla/mux"
 )
 
 var (
-	database *sql.DB
-	router   *mux.Router
+	router *mux.Router
+	db     *database.Database
 )
+
+func init() {
+	log.Println("Starting\n",
+		"   _____ _                    _ _____                             \n",
+		"  / ____| |                  | |  __ \\                           \n",
+		" | |    | | ___  ___  ___  __| | |  | | ___   ___  _ __ ___       \n",
+		" | |    | |/ _ \\/ __|/ _ \\/ _` | |  | |/ _ \\ / _ \\| '__/ __|  \n",
+		" | |____| | (_) \\__ \\  __/ (_| | |__| | (_) | (_) | |  \\__ \\  \n",
+		"  \\_____|_|\\___/|___/\\___|\\__,_|_____/ \\___/ \\___/|_|  |___/")
+
+}
 
 type JsonResponse struct {
 	Type    string `json:"type"`
@@ -23,15 +31,28 @@ type JsonResponse struct {
 }
 
 func StartServer(mysqlHost, mysqlUser, mysqlPasswd, mysqlDbName string, mysqlPort int) {
-	log.Println("Starting ClosedDoors service...")
-	log.Println("Connecting to SQL database...")
-	InitDatabase(mysqlHost, mysqlUser, mysqlPasswd, mysqlDbName, mysqlPort)
-	log.Println("Connected!")
-	InitRouter()
 
+	log.Println("Connecting to SQL database...")
+	db = database.NewSQLConnection().
+		SetHost(mysqlHost).
+		SetUser(mysqlUser).
+		SetPasswd(mysqlPasswd).
+		SetDBName(mysqlDbName).
+		SetPort(mysqlPort)
+	db.StartConnection()
+	log.Println("Connection Established!")
+
+	log.Println("Creating doors table...")
+	db.InitDatabase()
+	log.Println("Done!")
+
+	log.Println("Initiating API...")
+	InitRouter()
+	log.Println("Done!")
+	log.Println("Waiting for requests...")
 	log.Fatal(http.ListenAndServe(":8080", router))
-	database.Close()
 }
+
 func InitRouter() {
 	log.Println("Starting API...")
 
@@ -42,48 +63,11 @@ func InitRouter() {
 	router.HandleFunc("/register", RegisterKeyHandler).Methods("POST")
 }
 
-func InitDatabase(host, user, passwd, dbName string, port int) {
-	var (
-		err error
-	)
-
-	connectionString := user + ":" + passwd + "@tcp(" + host + ":" + strconv.Itoa(port) + ")/" + dbName
-
-	for {
-
-		database, err = sql.Open("mysql", connectionString)
-		if err != nil {
-			panic(err)
-		}
-
-		err = database.Ping()
-		if err == nil {
-			break
-		}
-
-		time.Sleep(1 * time.Second)
-		continue
-
-	}
-
-	qry := "CREATE TABLE IF NOT EXISTS doors (" +
-		"key_sha CHAR(64) PRIMARY KEY," +
-		"expire_time TIMESTAMP" +
-		")"
-
-	_, err = database.Exec(qry)
-
-	if err != nil {
-		panic(err.Error())
-	}
-
-}
-
 func RegisterKeyHandler(w http.ResponseWriter, r *http.Request) {
 	key_sha := r.FormValue("hash")
 	expireTime := r.FormValue("expire-time")
 
-	RegisterKey(key_sha, expireTime)
+	db.RegisterKey(key_sha, expireTime)
 
 	response := JsonResponse{Type: "success", Message: "Registered"}
 	json.NewEncoder(w).Encode(response)
@@ -91,40 +75,15 @@ func RegisterKeyHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Added key hash: " + key_sha + " ")
 }
 
-func RegisterKey(key_sha, expireTime string) {
-	qry := "INSERT INTO doors (key_sha, expire_time) VALUES('" + key_sha + "', '" + expireTime + "')"
-
-	_, err := database.Exec(qry)
-
-	if err != nil {
-		panic(err.Error())
-	}
-}
-
 func CheckKeyHandler(w http.ResponseWriter, r *http.Request) {
 	key_sha := r.FormValue("hash")
 
 	response := JsonResponse{Type: "success", Message: "Valid"}
 
-	if !CheckKey(key_sha) {
+	if !db.CheckKey(key_sha) {
 		response.Message = "Invalid"
 	}
 	log.Println("key: " + key_sha + " status: " + response.Message)
 	json.NewEncoder(w).Encode(response)
-
-}
-
-func CheckKey(key_sha string) bool {
-	qry := "SELECT key_sha FROM doors WHERE key_sha='" + key_sha + "' AND expire_time>=" + "CURRENT_TIMESTAMP" + ""
-
-	rows, err := database.Query(qry)
-
-	if err != nil {
-		panic(err.Error())
-	}
-
-	defer rows.Close()
-
-	return rows.Next()
 
 }
