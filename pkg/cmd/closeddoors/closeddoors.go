@@ -27,13 +27,12 @@ func StartServer(mysqlHost, mysqlUser, mysqlPasswd, mysqlDbName string, mysqlPor
 	log.Println("Connecting to SQL database...")
 	InitDatabase(mysqlHost, mysqlUser, mysqlPasswd, mysqlDbName, mysqlPort)
 	log.Println("Connected!")
-	initRouter()
+	InitRouter()
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 	database.Close()
 }
-func initRouter() {
-
+func InitRouter() {
 	log.Println("Starting API...")
 
 	router = mux.NewRouter()
@@ -44,7 +43,6 @@ func initRouter() {
 }
 
 func InitDatabase(host, user, passwd, dbName string, port int) {
-
 	var (
 		err error
 	)
@@ -82,10 +80,10 @@ func InitDatabase(host, user, passwd, dbName string, port int) {
 }
 
 func RegisterKeyHandler(w http.ResponseWriter, r *http.Request) {
-
 	key_sha := r.FormValue("hash")
+	expireTime := r.FormValue("expire-time")
 
-	RegisterKey(key_sha)
+	RegisterKey(key_sha, expireTime)
 
 	response := JsonResponse{Type: "success", Message: "Registered"}
 	json.NewEncoder(w).Encode(response)
@@ -93,8 +91,8 @@ func RegisterKeyHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Added key hash: " + key_sha + " ")
 }
 
-func RegisterKey(key_sha string) {
-	qry := "INSERT INTO doors (key_sha, expire_time) VALUES('" + key_sha + "', CURRENT_TIMESTAMP)"
+func RegisterKey(key_sha, expireTime string) {
+	qry := "INSERT INTO doors (key_sha, expire_time) VALUES('" + key_sha + "', '" + expireTime + "')"
 
 	_, err := database.Exec(qry)
 
@@ -104,7 +102,6 @@ func RegisterKey(key_sha string) {
 }
 
 func CheckKeyHandler(w http.ResponseWriter, r *http.Request) {
-
 	key_sha := r.FormValue("hash")
 
 	response := JsonResponse{Type: "success", Message: "Valid"}
@@ -118,8 +115,7 @@ func CheckKeyHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func CheckKey(key_sha string) bool {
-
-	qry := "SELECT key_sha FROM doors WHERE key_sha='" + key_sha + "'"
+	qry := "SELECT key_sha FROM doors WHERE key_sha='" + key_sha + "' AND expire_time>=" + "CURRENT_TIMESTAMP" + ""
 
 	rows, err := database.Query(qry)
 
@@ -129,10 +125,6 @@ func CheckKey(key_sha string) bool {
 
 	defer rows.Close()
 
-	if rows.Next() {
-		return true
-	}
-
-	return false
+	return rows.Next()
 
 }
