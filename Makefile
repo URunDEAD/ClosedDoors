@@ -1,11 +1,32 @@
-compile:
-	go build -o bin/ClosedDoors cmd/closeddoors/main.go
+BINDIR			:= $(CURDIR)/bin
+INSTALL_PATH	?= /usr/local/bin
+BINNAME			?= closeddoors
+
+# go options
+PKG        := ./test/...
+TAGS       :=
+TESTS      := .
+TESTFLAGS  := -v
+LDFLAGS    := -w -s
+GOFLAGS    :=
+
+# Required for globs to work correctly
+SHELL      = /usr/bin/env bash
+
+.PHONY: build
+build:
+	go build -o $(BINDIR)/$(BINNAME) cmd/closeddoors/main.go
+
+.PHONY: clean
 clean:
 	rm -rf bin
-testing:
-	docker-compose -f build/docker/docker-compose.yaml up test_service --attach test_service --no-log-prefix --abort-on-container-exit --build
-	docker-compose -f build/docker/docker-compose.yaml down
-db-up:
-	docker-compose -f build/docker/docker-compose.yaml up db -d
-db-down:
-	docker-compose -f build/docker/docker-compose.yaml down
+
+.PHONY: test
+test: build
+test: test-unit
+
+.PHONY: test-unit
+test-unit:
+	@echo
+	@echo "==> Running unit tests <=="
+	GO111MODULE=on go test $(GOFLAGS) -run $(TESTS) $(PKG) $(TESTFLAGS)
