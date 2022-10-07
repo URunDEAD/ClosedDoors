@@ -47,6 +47,11 @@ func (x *Database) SetPort(value int) *Database {
 	return x
 }
 
+func (x *Database) SetDatabase(db *sql.DB) *Database {
+	x.database = db
+	return x
+}
+
 func (x *Database) CheckKey(key_sha string) bool {
 	qry := "SELECT key_sha FROM doors WHERE key_sha='" + key_sha + "' AND expire_time>=" + "CURRENT_TIMESTAMP" + ""
 
@@ -88,6 +93,20 @@ func (x *Database) InitDatabase() {
 		panic(err.Error())
 	}
 
+}
+
+func (x *Database) ResetDatabase() {
+	var err error
+
+	qry := "DROP TABLE IF EXISTS doors"
+
+	_, err = x.database.Exec(qry)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	x.InitDatabase()
 }
 
 func (x *Database) StartConnection() {
